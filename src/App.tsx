@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import type { ChangeEvent, DragEvent } from 'react';
-import { convertToJpeg, convertToWebp, writeExifData } from './utils/exifUtils';
+import { convertToJpeg, convertToWebp, writeExifToWebp } from './utils/exifUtils';
 import './index.css';
 
 function App() {
@@ -77,39 +77,22 @@ function App() {
   };
 
   const handleSave = () => {
-    if (!jpegDataUrl) return;
-    
-    try {
-      const newJpeg = writeExifData(jpegDataUrl, title, tags, author, copyright);
-      
-      // Trigger download
-      const link = document.createElement('a');
-      link.href = newJpeg;
-      const safeTitle = title.trim() ? title : 'tagged_image';
-      link.download = `${safeTitle}.jpg`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (error) {
-      console.error('Failed to write metadata:', error);
-      alert('Failed to write metadata to image.');
-    }
-  };
-
-  const handleSaveWebp = () => {
     if (!webpDataUrl) return;
     
     try {
+      // Inject EXIF tags directly into the WebP RIFF container
+      const taggedWebp = writeExifToWebp(webpDataUrl, title, tags, author, copyright);
+      
       const link = document.createElement('a');
-      link.href = webpDataUrl;
-      const safeTitle = title.trim() ? title : 'converted_image';
+      link.href = taggedWebp;
+      const safeTitle = title.trim() ? title : 'tagged_image';
       link.download = `${safeTitle}.webp`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } catch (error) {
-      console.error('Failed to convert to WebP:', error);
-      alert('Failed to convert image to WebP.');
+      console.error('Failed to save image:', error);
+      alert('Failed to save image.');
     }
   };
 
@@ -224,14 +207,9 @@ function App() {
             />
           </div>
           
-          <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-            <button className="btn-primary" onClick={handleSave} style={{ flex: 1 }}>
-              Save w/ Tags (JPG)
-            </button>
-            <button className="btn-secondary" onClick={handleSaveWebp} style={{ flex: 1 }} title="Standard WebP conversion removes EXIF tags">
-              Convert (WebP, No Tags)
-            </button>
-          </div>
+          <button className="btn-primary" onClick={handleSave} style={{ width: '100%', marginTop: '15px' }}>
+            Save & Download
+          </button>
         </div>
       )}
     </div>
