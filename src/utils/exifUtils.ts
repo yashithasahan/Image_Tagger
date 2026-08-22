@@ -16,7 +16,7 @@ export const convertToJpeg = (file: File): Promise<string> => {
           return;
         }
         ctx.drawImage(img, 0, 0);
-        resolve(canvas.toDataURL('image/jpeg', 1.0));
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
       };
       img.onerror = () => reject(new Error('Failed to load image'));
       img.src = e.target?.result as string;
@@ -136,7 +136,10 @@ const buildExifPayload = (
   if (!title && !tags && !author && !copyright) return null;
 
   const exifObj: any = { "0th": {}, "Exif": {}, "GPS": {}, "Interop": {}, "1st": {} };
-  if (title) exifObj["0th"][piexif.ImageIFD.XPTitle] = encodeXPString(title);
+  if (title) {
+    exifObj["0th"][piexif.ImageIFD.XPTitle] = encodeXPString(title);
+    exifObj["0th"][piexif.ImageIFD.ImageDescription] = title;
+  }
   if (tags) {
     const formatted = tags.split(',').map(t => t.trim()).join(';');
     exifObj["0th"][piexif.ImageIFD.XPKeywords] = encodeXPString(formatted);
@@ -147,10 +150,11 @@ const buildExifPayload = (
   }
   if (copyright) exifObj["0th"][piexif.ImageIFD.Copyright] = copyright;
 
-  // piexif.dump() returns: \xff\xe1 + 2-byte length + "Exif\0\0" + TIFF data
-  // Strip the 4-byte JPEG APP1 prefix to get the raw EXIF payload for WebP
+  // piexif.dump() returns: \xff\xe1(2) + length(2) + "Exif\0\0"(6) + TIFF header...
+  // WebP spec: EXIF chunk payload must be raw TIFF data WITHOUT the "Exif\0\0" prefix
+  // So we strip the first 10 bytes (APP1 marker + length + Exif header)
   const dump = piexif.dump(exifObj);
-  const payload = dump.substring(4);
+  const payload = dump.substring(10);
 
   const bytes = new Uint8Array(payload.length);
   for (let i = 0; i < payload.length; i++) bytes[i] = payload.charCodeAt(i);

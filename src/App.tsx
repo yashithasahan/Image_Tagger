@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import type { ChangeEvent, DragEvent } from 'react';
-import { convertToJpeg, convertToWebp, writeExifToWebp } from './utils/exifUtils';
+import { convertToJpeg, convertToWebp, writeExifData, writeExifToWebp } from './utils/exifUtils';
 import './index.css';
 
 function App() {
@@ -76,23 +76,56 @@ function App() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const handleSave = () => {
-    if (!webpDataUrl) return;
+  const handleSaveJpg = () => {
+    if (!jpegDataUrl) return;
     
     try {
-      // Inject EXIF tags directly into the WebP RIFF container
-      const taggedWebp = writeExifToWebp(webpDataUrl, title, tags, author, copyright);
+      const taggedJpeg = writeExifData(jpegDataUrl, title, tags, author, copyright);
       
       const link = document.createElement('a');
-      link.href = taggedWebp;
+      link.href = taggedJpeg;
       const safeTitle = title.trim() ? title : 'tagged_image';
-      link.download = `${safeTitle}.webp`;
+      link.download = `${safeTitle}.jpg`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } catch (error) {
-      console.error('Failed to save image:', error);
-      alert('Failed to save image.');
+      console.error('Failed to write metadata:', error);
+      alert('Failed to write metadata to image.');
+    }
+  };
+
+  const handleSaveWebp = () => {
+    if (!webpDataUrl) return;
+    
+    try {
+      // Experimental: try injecting EXIF into WebP
+      let downloadUrl = webpDataUrl;
+      try {
+        downloadUrl = writeExifToWebp(webpDataUrl, title, tags, author, copyright);
+      } catch (exifErr) {
+        console.warn('WebP EXIF injection failed, downloading without tags:', exifErr);
+      }
+      
+      const base64 = downloadUrl.split(',')[1];
+      const byteStr = atob(base64);
+      const bytes = new Uint8Array(byteStr.length);
+      for (let i = 0; i < byteStr.length; i++) bytes[i] = byteStr.charCodeAt(i);
+      
+      const blob = new Blob([bytes], { type: 'image/webp' });
+      const blobUrl = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      const safeTitle = title.trim() ? title : 'converted_image';
+      link.download = `${safeTitle}.webp`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Failed to convert to WebP:', error);
+      alert('Failed to convert image to WebP.');
     }
   };
 
@@ -207,9 +240,14 @@ function App() {
             />
           </div>
           
-          <button className="btn-primary" onClick={handleSave} style={{ width: '100%', marginTop: '15px' }}>
-            Save & Download
-          </button>
+          <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+            <button className="btn-primary" onClick={handleSaveJpg} style={{ flex: 1 }}>
+              Save Tags (JPG)
+            </button>
+            <button className="btn-secondary" onClick={handleSaveWebp} style={{ flex: 1 }}>
+              Convert to WebP
+            </button>
+          </div>
         </div>
       )}
     </div>
