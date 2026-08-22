@@ -6,7 +6,6 @@ import './index.css';
 function App() {
   const [jpegDataUrl, setJpegDataUrl] = useState<string>('');
   const [webpDataUrl, setWebpDataUrl] = useState<string>('');
-  const [originalFile, setOriginalFile] = useState<File | null>(null);
   const [originalSize, setOriginalSize] = useState<number>(0);
   const [webpSize, setWebpSize] = useState<number>(0);
   const [title, setTitle] = useState('');
@@ -19,7 +18,6 @@ function App() {
 
   const handleFile = async (selectedFile: File) => {
     try {
-      setOriginalFile(selectedFile);
       setOriginalSize(selectedFile.size);
 
       // Convert to JPEG for tagging
@@ -132,7 +130,6 @@ function App() {
   const handleClear = () => {
     setJpegDataUrl('');
     setWebpDataUrl('');
-    setOriginalFile(null);
     setOriginalSize(0);
     setWebpSize(0);
     setTitle('');
